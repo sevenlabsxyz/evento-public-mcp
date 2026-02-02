@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "evento-public": {
+      "command": "node",
+      "args": ["/absolute/path/to/evento-public-mcp/dist/index.js"],
+      "env": {
+        "EVENTO_PUBLIC_API_KEY": "your-evento-public-api-key-here"
+      }
+    }
+  }
+}
