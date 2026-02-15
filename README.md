@@ -53,6 +53,32 @@ Then run:
 npm start
 ```
 
+## Installable Skill (`SKILL.md`)
+
+This repository includes an installable Claude skill file at:
+
+- `SKILL.md`
+
+Install it locally:
+
+```bash
+mkdir -p ~/.claude/skills/evento-public-mcp
+cp SKILL.md ~/.claude/skills/evento-public-mcp/SKILL.md
+```
+
+Canonical source and docs:
+
+- Skill file: `https://github.com/andreneves/evento-public-mcp/blob/main/SKILL.md`
+- Docs page: `https://docs.evento.so/mcp-server/skill`
+
+### Versioning and sync policy
+
+- Source of truth is this repository's `SKILL.md`
+- When updating skill behavior or instructions, update `SKILL.md` first
+- Keep the docs mirror page in sync: `evento-docs/ai/skill.mdx`
+- Bump `metadata.version` in `SKILL.md` for meaningful content changes
+- Verify the docs page still reflects the full file content before release
+
 ## Environment Variables
 
 Required:
