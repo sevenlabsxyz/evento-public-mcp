@@ -4,16 +4,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import {
-  listEvents,
-  listEventsToolDefinition,
-  ListEventsInput,
-} from './tools/list-events.js';
-import {
-  getEvent,
-  getEventToolDefinition,
-  GetEventInput,
-} from './tools/get-event.js';
+import { executePublicTool, PUBLIC_TOOLS } from './public-tools.js';
 
 const server = new Server(
   {
@@ -29,38 +20,23 @@ const server = new Server(
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
-    tools: [listEventsToolDefinition, getEventToolDefinition],
+    tools: PUBLIC_TOOLS,
   };
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+  const result = await executePublicTool(name, args ?? {});
 
-  if (name === 'list-events') {
-    const result = await listEvents(args as ListEventsInput);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: result,
-        },
-      ],
-    };
-  }
-
-  if (name === 'get-event') {
-    const result = await getEvent(args as GetEventInput);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: result,
-        },
-      ],
-    };
-  }
-
-  throw new Error(`Unknown tool: ${name}`);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(result.payload, null, 2),
+      },
+    ],
+    isError: result.isError,
+  };
 });
 
 export async function startServer(): Promise<void> {

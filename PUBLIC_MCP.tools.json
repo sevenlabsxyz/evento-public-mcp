@@ -1,0 +1,45 @@
+{
+  "tools": [
+    {
+      "name": "list-events",
+      "description": "List events for a specific user. Returns upcoming, past, or all profile events.",
+      "method": "GET",
+      "path": "/users/{username}/events",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "The username to list events for"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["upcoming", "past", "profile"],
+            "description": "Filter events by type: upcoming, past, or profile (all public events)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum number of events to return"
+          }
+        },
+        "required": ["username"]
+      }
+    },
+    {
+      "name": "get-event",
+      "description": "Get detailed information about a specific event by its ID.",
+      "method": "GET",
+      "path": "/events/{eventId}",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "The ID of the event to retrieve"
+          }
+        },
+        "required": ["eventId"]
+      }
+    }
+  ]
+}

@@ -1,28 +1,34 @@
 # Evento Public MCP Server
 
-A local Model Context Protocol (MCP) server for accessing Evento's public API through Claude Desktop. Query events and user profiles without leaving Claude.
+Local MCP server for Evento developer-facing authenticated public APIs.
+
+It runs on your machine over stdio, authenticates every API call with your API key, and can be connected to Claude Desktop (or any MCP client that supports stdio transport).
+
+## What This Server Is
+
+- MCP transport adapter only (stdio)
+- Tool calls mapped to Evento Public API routes
+- Auth injected centrally using your API key
+- No database access, no Supabase, no server-side persistence in MCP layer
+
+This follows the same architecture shape as the admin MCP pattern, with different API routes and key type.
 
 ## Features
 
-- **list-events**: Query events for any public user profile
-  - Filter by type: upcoming, past, or all profile events
-  - Customize result limit
-  - Get event titles, dates, locations, and descriptions
+- `list-events`
+  - Lists user events
+  - Optional filters: `type`, `limit`
+- `get-event`
+  - Gets one event by ID
 
-- **get-event**: Retrieve detailed event information
-  - Full event details including host, co-hosts, capacity, and cost
-  - Event status and visibility information
-  - Attendee and interest counts
+## Requirements
 
-## Prerequisites
+- Node.js 18+
+- npm
+- Evento developer-facing API key
+- MCP client (Claude Desktop, Cursor, etc.)
 
-- Node.js 18+ installed
-- Claude Desktop app
-- Evento Public API key (free tier available)
-
-## Installation
-
-### 1. Clone and Build
+## Quick Start
 
 ```bash
 git clone https://github.com/andreneves/evento-public-mcp.git
@@ -31,29 +37,41 @@ npm install
 npm run build
 ```
 
-### 2. Get Your API Key
+Create your env file:
 
-1. Visit [Evento Public API](https://api.evento.so/docs) documentation
-2. Sign up for a free public API key
-3. Copy your `EVENTO_PUBLIC_API_KEY`
-
-### 3. Configure Claude Desktop
-
-#### macOS
-Open the Claude Desktop config file:
 ```bash
-~/Library/Application Support/Claude/claude_desktop_config.json
+cp .env.example .env
 ```
 
-#### Windows
-Open the Claude Desktop config file:
-```
-%APPDATA%\Claude\claude_desktop_config.json
+Set at least:
+
+- `PUBLIC_API_KEY`
+
+Then run:
+
+```bash
+npm start
 ```
 
-#### Add MCP Server Configuration
+## Environment Variables
 
-Copy `claude_desktop_config.example.json` and update with your absolute path:
+Required:
+
+- `PUBLIC_API_KEY`
+  - Developer-facing Evento API key used as `Authorization: Bearer <key>`
+
+Optional:
+
+- `EVENTO_API_BASE_URL` (default: `https://api.evento.so`)
+- `EVENTO_API_TIMEOUT_MS` (default: `15000`)
+- `EVENTO_API_RETRY_ATTEMPTS` (default: `2`)
+- `EVENTO_API_RETRY_DELAY_MS` (default: `250`)
+- `EVENTO_PUBLIC_API_KEY` (legacy compatibility fallback if `PUBLIC_API_KEY` is missing)
+- `EVENTO_SMOKE_USERNAME` (used by smoke command)
+
+## MCP Client Configuration
+
+Example Claude Desktop config (`claude_desktop_config.json`):
 
 ```json
 {
@@ -62,237 +80,174 @@ Copy `claude_desktop_config.example.json` and update with your absolute path:
       "command": "node",
       "args": ["/absolute/path/to/evento-public-mcp/dist/index.js"],
       "env": {
-        "EVENTO_PUBLIC_API_KEY": "your-evento-public-api-key-here"
+        "PUBLIC_API_KEY": "your-evento-api-key",
+        "EVENTO_API_BASE_URL": "https://api.evento.so"
       }
     }
   }
 }
 ```
 
-**Important**: Replace `/absolute/path/to/evento-public-mcp` with the full path to your cloned repository.
+Notes:
 
-### 4. Restart Claude Desktop
-
-Close and reopen Claude Desktop to load the new MCP server.
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `EVENTO_PUBLIC_API_KEY` | Yes | Your Evento public API key for authentication |
+- Use an absolute path in `args`
+- Restart Claude Desktop after config changes
 
 ## Available Tools
 
-### list-events
+### `list-events`
 
-List events for a specific user. Returns upcoming, past, or all profile events.
+List events for a user.
 
-**Parameters:**
-- `username` (string, required): The username to list events for
-- `type` (string, optional): Filter by `upcoming`, `past`, or `profile` (all public events)
-- `limit` (number, optional): Maximum number of events to return
+Input:
 
-**Example Usage:**
+- `username` (required, string)
+- `type` (optional, `upcoming | past | profile`)
+- `limit` (optional, number)
 
-```
-List upcoming events for user "alice"
-```
+Route mapping:
 
-Claude will call:
-```json
-{
-  "username": "alice",
-  "type": "upcoming",
-  "limit": 10
-}
-```
+- `GET /public/v1/users/{username}/events`
 
-**Response Example:**
-```
-# Events for @alice
+### `get-event`
 
-Found 3 event(s) (upcoming):
+Get event details by ID.
 
-## Tech Meetup 2025
-- **ID**: evt_a1b2c3d4e5
-- **Date**: 2/15/2025, 7:00:00 PM - 9:00:00 PM
-- Location: San Francisco, CA
-- **Status**: published
-- **Visibility**: public
-- Host: Alice Johnson
+Input:
 
-Join us for an evening of tech talks and networking...
-```
+- `eventId` (required, string)
 
-### get-event
+Route mapping:
 
-Get detailed information about a specific event by its ID.
+- `GET /public/v1/events/{eventId}`
 
-**Parameters:**
-- `eventId` (string, required): The ID of the event to retrieve
+## Architecture
 
-**Example Usage:**
+Key files:
 
-```
-Get details for event evt_a1b2c3d4e5
-```
+- `src/index.ts`
+  - process entrypoint
+- `src/mcp-server.ts`
+  - MCP protocol handling (`tools/list`, `tools/call`)
+- `src/public-tools.ts`
+  - single runtime registry (`PUBLIC_TOOLS`)
+  - generic executor (`executePublicTool`)
+  - auth/header injection, path interpolation, timeout/retry, normalized response
+- `PUBLIC_MCP.tools.json`
+  - manifest mirror of runtime tools
 
-Claude will call:
-```json
-{
-  "eventId": "evt_a1b2c3d4e5"
-}
+Execution flow:
+
+1. MCP client calls `tools/list`
+2. server returns `PUBLIC_TOOLS`
+3. MCP client calls `tools/call`
+4. server delegates to `executePublicTool(name, args)`
+5. executor validates required args, resolves path placeholders, strips path args from body
+6. executor calls Evento API with auth header and retry/timeout policy
+7. executor normalizes success/error payload back to MCP response
+
+## Local Development
+
+Install deps:
+
+```bash
+npm install
 ```
 
-**Response Example:**
-```
-# Tech Meetup 2025
+Run directly in TypeScript:
 
-**Event ID**: evt_a1b2c3d4e5
-**Status**: published
-**Visibility**: public
-
-## When
-- **Start**: 2/15/2025, 7:00:00 PM (America/Los_Angeles)
-- **End**: 2/15/2025, 9:00:00 PM (America/Los_Angeles)
-
-## Where
-San Francisco, CA
-
-## Details
-**Host**: Alice Johnson (@alice) ✓
-**Cost**: Free
-**Capacity**: 45/100
-**Interested**: 12
-
-## Description
-Join us for an evening of tech talks and networking with industry professionals...
-
-**Cover Image**: https://cdn.evento.so/events/evt_a1b2c3d4e5/cover.jpg
+```bash
+npm run dev
 ```
 
-## Usage Examples
+Build:
 
-### Find Events by User
-
-```
-Show me all upcoming events for user "bob"
+```bash
+npm run build
 ```
 
-### Get Event Details
+Run built server:
 
-```
-Tell me more about event evt_xyz123
-```
-
-### Search Multiple Users
-
-```
-List past events for users "alice" and "charlie"
+```bash
+npm start
 ```
 
-### Discover Events
+## Testing and Verification
 
+Run tests:
+
+```bash
+npm test
 ```
-What events is "sarah" hosting? Show me the details of her next event.
+
+Run build + tests:
+
+```bash
+npm run verify
 ```
 
-## How It Works
+Smoke check (live API):
 
-This MCP server runs **locally** on your machine and communicates with Claude Desktop via stdio transport. It:
+```bash
+EVENTO_SMOKE_USERNAME=your-username npm run smoke
+```
 
-1. Receives tool requests from Claude Desktop
-2. Validates input parameters using Zod schemas
-3. Makes authenticated requests to Evento's public API
-4. Formats responses as readable markdown
-5. Returns results to Claude
+Test layers included:
 
-**No data is sent to external servers** - all communication is local to your machine.
+- Unit: `tests/public-tools.unit.test.ts`
+- Manifest parity: `tests/manifest-parity.test.ts`
+- MCP stdio e2e: `tests/mcp.e2e.test.ts`
+
+## Adding a New Tool
+
+1. Add a new tool definition to `PUBLIC_TOOLS` in `src/public-tools.ts`
+   - name, description, method, path, input schema
+2. Ensure route/path placeholders align with args
+3. Update `PUBLIC_MCP.tools.json` to match
+4. Add/extend unit tests and parity assertions
+5. Run `npm run verify`
+
+## Error Handling and Retry Policy
+
+- Retries on retryable statuses: `408`, `429`, `5xx`
+- Retries on retryable network errors (timeout / DNS / connection reset classes)
+- Controlled by env vars (`EVENTO_API_RETRY_*`)
+- Returns MCP `isError: true` with structured error payload when failed
 
 ## Troubleshooting
 
-### "EVENTO_PUBLIC_API_KEY not set" Error
+### Missing API key
 
-**Solution**: Ensure the environment variable is set in your Claude Desktop config:
-```json
-"env": {
-  "EVENTO_PUBLIC_API_KEY": "your-actual-api-key"
-}
-```
+Symptom:
 
-### "Invalid API key" Error
+- Tool call returns missing key error
 
-**Solution**: Verify your API key is correct:
-1. Check the Evento API dashboard
-2. Regenerate the key if needed
-3. Update your Claude Desktop config
-4. Restart Claude Desktop
+Fix:
 
-### "User not found" Error
+- Set `PUBLIC_API_KEY` in MCP client env config
 
-**Solution**: The username doesn't exist or has no public events:
-- Verify the username spelling
-- Check if the user's profile is public
-- Try a different username
+### Tools not visible in client
 
-### "Event not found" Error
+Fix checklist:
 
-**Solution**: The event ID is invalid or the event is not publicly accessible:
-- Verify the event ID format (should start with `evt_`)
-- Check if the event is published and public
-- Try listing events for the host user first
+1. Run `npm run build`
+2. Confirm `dist/index.js` exists
+3. Confirm absolute path in MCP config
+4. Restart MCP client app
 
-### MCP Server Not Appearing in Claude
+### API errors
 
-**Solution**: 
-1. Verify the path in your config is absolute (not relative)
-2. Ensure `npm run build` completed successfully
-3. Check that `dist/index.js` exists
-4. Restart Claude Desktop completely
-5. Check Claude's logs for errors
+Fix checklist:
 
-## Development
+1. Verify key is valid for authenticated public endpoints
+2. Verify `EVENTO_API_BASE_URL`
+3. Run smoke check with a known username
 
-To modify or add new tools:
+## Security Notes
 
-1. Create new tool in `src/tools/`
-2. Import and register in `src/mcp-server.ts`
-3. Run `npm run build`
-4. Restart Claude Desktop
-
-### Project Structure
-
-```
-evento-public-mcp/
-├── src/
-│   ├── index.ts              # Entry point
-│   ├── mcp-server.ts         # MCP server setup
-│   └── tools/
-│       ├── list-events.ts    # List events tool
-│       └── get-event.ts      # Get event details tool
-├── dist/                     # Compiled JavaScript
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-## Open Source & Local-Only
-
-This MCP server is designed for **local use only**:
-
-- ✅ Runs entirely on your machine
-- ✅ Uses stdio transport (no HTTP server)
-- ✅ No cloud hosting or external dependencies
-- ✅ Your API key stays on your machine
-- ✅ Open source and auditable
+- Keep API keys in local env config, not source control
+- This project does not store your API key beyond process env
 
 ## License
 
 ISC
-
-## Support
-
-For issues or questions:
-- Check the [Evento API Documentation](https://api.evento.so/docs)
-- Review the troubleshooting section above
-- Open an issue on GitHub
