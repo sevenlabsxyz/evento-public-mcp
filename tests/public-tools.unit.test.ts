@@ -12,7 +12,7 @@ describe('executePublicTool', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.PUBLIC_API_KEY = 'test-public-key';
-    process.env.EVENTO_API_BASE_URL = 'https://api.evento.so';
+    process.env.EVENTO_API_BASE_URL = 'https://evento.so/api';
     process.env.EVENTO_API_RETRY_ATTEMPTS = '2';
     process.env.EVENTO_API_RETRY_DELAY_MS = '0';
     process.env.EVENTO_API_TIMEOUT_MS = '5000';

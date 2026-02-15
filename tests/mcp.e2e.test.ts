@@ -21,7 +21,7 @@ describe('mcp stdio e2e', () => {
     env: {
       ...process.env,
       PUBLIC_API_KEY: process.env.PUBLIC_API_KEY ?? 'test-public-key',
-      EVENTO_API_BASE_URL: process.env.EVENTO_API_BASE_URL ?? 'https://api.evento.so',
+      EVENTO_API_BASE_URL: process.env.EVENTO_API_BASE_URL ?? 'https://evento.so/api',
       EVENTO_API_TIMEOUT_MS: '1000',
       EVENTO_API_RETRY_ATTEMPTS: '0',
       EVENTO_API_RETRY_DELAY_MS: '0',

@@ -83,7 +83,7 @@ function parseEnvInt(value: string | undefined, fallback: number): number {
 }
 
 function getApiBaseUrl(): string {
-  return (process.env.EVENTO_API_BASE_URL ?? 'https://api.evento.so').replace(/\/$/, '');
+  return (process.env.EVENTO_API_BASE_URL ?? 'https://evento.so/api').replace(/\/$/, '');
 }
 
 function getApiKey(): string | undefined {

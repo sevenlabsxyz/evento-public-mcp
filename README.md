@@ -62,7 +62,7 @@ Required:
 
 Optional:
 
-- `EVENTO_API_BASE_URL` (default: `https://api.evento.so`)
+- `EVENTO_API_BASE_URL` (default: `https://evento.so/api`)
 - `EVENTO_API_TIMEOUT_MS` (default: `15000`)
 - `EVENTO_API_RETRY_ATTEMPTS` (default: `2`)
 - `EVENTO_API_RETRY_DELAY_MS` (default: `250`)
@@ -81,7 +81,7 @@ Example Claude Desktop config (`claude_desktop_config.json`):
       "args": ["/absolute/path/to/evento-public-mcp/dist/index.js"],
       "env": {
         "PUBLIC_API_KEY": "your-evento-api-key",
-        "EVENTO_API_BASE_URL": "https://api.evento.so"
+        "EVENTO_API_BASE_URL": "https://evento.so/api"
       }
     }
   }
